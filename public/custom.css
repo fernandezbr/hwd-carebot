@@ -14,7 +14,7 @@
 }
 
 .watermark .text-xs span::after {
-    content: "Note: Generated content may be inaccurate or false.";
+    content: "Disclaimer: Please be aware that this AI is still in pilot and its output may not always be accurate or complete. It is highly recommended to exercise user discretion when interpreting and utilizing the information provided. For concerns, you may reach HWD through email: hwd_healthcareplan@bsp.gov.ph";
     font-size: 12px;
     line-height: normal;
     visibility: visible !important;
@@ -45,4 +45,14 @@ div:has(> h2.text-lg.font-semibold.leading-none.tracking-tight:not([id^="radix-"
 a[href*='https://chainlit.io'] { 
     visibility: visible !important;
     pointer-events: none;
+}
+
+/* Hide chat settings button */
+#chat-settings-open-modal {
+    display: none !important;
+}
+
+/* Hide profile/user navigation button */
+#user-nav-button {
+    display: none !important;
 }

@@ -1,5 +1,24 @@
 // Custom JavaScript for Chainlit app
 
+// Function to set default theme to light
+function setDefaultLightTheme() {
+  // Check if theme is already set in localStorage
+  const currentTheme = localStorage.getItem('chainlit-theme');
+  
+  // If no theme is set, default to light
+  if (!currentTheme) {
+    localStorage.setItem('chainlit-theme', 'light');
+    // Apply light theme class to document if it exists
+    if (document.documentElement) {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    }
+  }
+}
+
+// Set theme as early as possible
+setDefaultLightTheme();
+
 // Function to find and modify the readme button
 function waitForReadmeButton() {
   // Check if button exists already

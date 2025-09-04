@@ -5,7 +5,7 @@ IF NOT EXIST "venv\Scripts\activate" (
 )
 
 echo Activate the virtual environment...
-call .\venv\Scripts\activate
+.\venv\Scripts\activate
 
 echo Installing/Updating requirements...
 python -m pip install -r requirements.txt
