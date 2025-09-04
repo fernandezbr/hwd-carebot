@@ -58,11 +58,47 @@ if (document.readyState === 'loading') {
   waitForReadmeButton();
 }
 
+// Function to add "Ask Carebot" text to the header
+function addAskCarebotToHeader() {
+  const header = document.getElementById('header');
+  
+  if (header && !header.querySelector('.ask-carebot-text')) {
+    // Create the text element
+    const askCarebotText = document.createElement('div');
+    askCarebotText.className = 'ask-carebot-text';
+    askCarebotText.textContent = 'Ask Carebot';
+    askCarebotText.style.cssText = `
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2.4rem;
+      font-weight: 600;
+      color: hsl(var(--muted-foreground));
+      pointer-events: none;
+      z-index: 10;
+    `;
+    
+    // Ensure header has relative positioning
+    if (window.getComputedStyle(header).position === 'static') {
+      header.style.position = 'relative';
+    }
+    
+    // Add the text to the header
+    header.appendChild(askCarebotText);
+    console.log('Ask Carebot text added to header');
+  } else if (!header) {
+    // If header doesn't exist yet, check again after a short delay
+    setTimeout(addAskCarebotToHeader, 300);
+  }
+}
+
 // Also use a MutationObserver to catch dynamically added elements
 const observer = new MutationObserver(function(mutations) {
   for (const mutation of mutations) {
     if (mutation.addedNodes.length) {
       waitForReadmeButton();
+      addAskCarebotToHeader();
     }
   }
 });
@@ -70,8 +106,10 @@ const observer = new MutationObserver(function(mutations) {
 // Start observing once the DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function() {
+    addAskCarebotToHeader();
     observer.observe(document.body, { childList: true, subtree: true });
   });
 } else {
+  addAskCarebotToHeader();
   observer.observe(document.body, { childList: true, subtree: true });
 }

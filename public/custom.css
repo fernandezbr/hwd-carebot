@@ -56,3 +56,56 @@ a[href*='https://chainlit.io'] {
 #user-nav-button {
     display: none !important;
 }
+
+/* Make message composer pure white in light mode */
+#message-composer {
+    background-color: white !important;
+}
+
+/* Ensure it stays with the original styling in dark mode */
+html.dark #message-composer {
+    background-color: hsl(var(--card)) !important;
+}
+
+/* Add background image to the main container for better coverage */
+.relative.flex.flex-col.flex-grow.overflow-y-auto {
+    background-image: url('./hwd/hwd-bg.png');
+    background-repeat: no-repeat;
+    background-position: 100% center;
+    background-size: auto 80%;
+    background-attachment: local;
+}
+
+/* Ensure the background image doesn't interfere with content readability */
+@media (max-width: 768px) {
+    .relative.flex.flex-col.flex-grow.overflow-y-auto {
+        background-size: auto 100%;
+        background-position: 100% top;
+    }
+}
+
+/* Fade out background on smaller screens for better mobile experience */
+@media (max-width: 480px) {
+    .relative.flex.flex-col.flex-grow.overflow-y-auto {
+        background-image: none;
+    }
+}
+
+/* Mobile-friendly styling for Ask Carebot header */
+@media (max-width: 768px) {
+    .ask-carebot-text {
+        font-size: 1.8rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .ask-carebot-text {
+        font-size: 1.4rem !important;
+    }
+}
+
+@media (max-width: 320px) {
+    .ask-carebot-text {
+        font-size: 1.2rem !important;
+    }
+}
