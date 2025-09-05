@@ -85,26 +85,21 @@ async def set_starters():
     """
     return [
         cl.Starter(
-            label="Morning routine ideation",
-            message="Can you help me create a personalized morning routine that would help increase my productivity throughout the day? Start by asking me about my current habits and what activities energize me in the morning.",
-            icon="/public/bulb.webp",
+            label="What is health services quota?",
+            message="Can you help me understand the health services quota and how it affects my access to care?",
+            icon="/public/icons/piechart.png",
             ),
 
         cl.Starter(
-            label="Spot the errors",
-            message="How can I avoid common mistakes when proofreading my work?",
-            icon="/public/warning.webp",
+            label="Would there be no limit in terms of privileges under the plan?",
+            message="Can you explain if there are any limitations on privileges under the health services plan?",
+            icon="/public/icons/warning.webp",
             ),
         cl.Starter(
-            label="Get more done",
-            message="How can I improve my productivity during remote work?",
-            icon="/public/rocket.png",
+            label="Who are covered by the mandatory AME?",
+            message="Can you help me understand who is covered by the mandatory AME?",
+            icon="/public/icons/bulb.webp",
             ),
-        cl.Starter(
-            label="Boost your knowledge",
-            message="Help me learn about [topic]",
-            icon="/public/book.png",
-            )
         ]
 
 

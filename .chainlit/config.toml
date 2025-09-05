@@ -1,6 +1,6 @@
 [project]
 # Whether to enable telemetry (default: true). No personal data is collected.
-enable_telemetry = false
+# enable_telemetry = false
 
 
 # List of environment variables to be provided by each user to use the app.
@@ -53,11 +53,11 @@ edit_message = true
 
 [UI]
 # Name of the assistant.
-name = "BSPChat"
+name = "Carebot"
 
-show_readme_button = true
+show_readme_button = false
 
-# default_theme = "dark"
+default_theme = "light"
 
 layout = "wide"
 
@@ -76,7 +76,7 @@ custom_css = "/public/custom.css"
 custom_js = "/public/custom.js"
 
 # Specify a custom meta image url.
-# custom_meta_image_url = "https://chainlit-cloud.s3.eu-west-3.amazonaws.com/logo/chainlit_banner.png"
+# custom_meta_image_url = "https://upload.wikimedia.org/wikipedia/commons/c/cb/Bangko_Sentral_ng_Pilipinas_2020_logo.png"
 
 # Specify a custom build directory for the frontend.
 # This can be used to customize the frontend code.
