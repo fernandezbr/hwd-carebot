@@ -1,140 +1,98 @@
-# Chainlit application main entry point for BSP AI Assistant
-# This file handles authentication, chat profiles, startup routines, and message processing
-# Supporting both standard LLM providers via LiteLLM and Azure AI Foundry agents
-
 import time
+import os
+from pathlib import Path
+from typing import Dict, Optional
+
 import chainlit as cl
+from azure.ai.agents import AgentsClient
+from azure.identity import DefaultAzureCredential
+
 from utils.utils import (
     append_message, init_settings, get_llm_details, get_llm_models, get_logger,
 )
-from typing import Dict, Optional
-from azure.ai.agents import AgentsClient
-from azure.identity import DefaultAzureCredential
 from utils.chats import chat_completion
 from utils.foundry import chat_agent
 
 logger = get_logger()
 
+# Allowed users for the FileUploader (optional: empty means everyone)
+ALLOWED_UPLOADER_USERS = os.getenv("ALLOWED_UPLOADER_USERS", "").split(",")
+ALLOWED_UPLOADER_USERS = [email.strip() for email in ALLOWED_UPLOADER_USERS if email.strip()]
 
 @cl.header_auth_callback
 def header_auth_callback(headers: Dict) -> Optional[cl.User]:
-    """
-    Handle authentication using headers from Azure App Service.
-    
-    Extracts user information from HTTP headers for authentication
-    in Azure App Service environments.
-    
-    Args:
-        headers: Dictionary containing HTTP request headers
-        
-    Returns:
-        Optional[cl.User]: User object if authentication successful, None otherwise
-    """
-    # Verify the signature of a token in the header (ex: jwt token)
-    # or check that the value is matching a row from your database
-    user_name = headers.get('X-MS-CLIENT-PRINCIPAL-NAME', 'dummy@microsoft.com')
-    user_id = headers.get('X-MS-CLIENT-PRINCIPAL-ID', '9876543210')
+    """Authenticate via Azure App Service headers."""
+    user_name = headers.get("X-MS-CLIENT-PRINCIPAL-NAME", "dummy@microsoft.com")
+    user_id = headers.get("X-MS-CLIENT-PRINCIPAL-ID", "9876543210")
     logger.debug(f"Auth Headers: {headers}")
 
     if user_name:
         return cl.User(identifier=user_name, metadata={"role": "admin", "provider": "header", "id": user_id})
-    else:
-        return None
+    return None
 
 
 @cl.set_chat_profiles
 async def chat_profile():
-    """
-    Set up available chat profiles based on configured LLM models.
-    
-    Creates chat profiles from the model configurations, allowing users
-    to select different language models for their conversations.
-    
-    Returns:
-        List[cl.ChatProfile]: List of available chat profiles
-    """
+    """Expose chat profiles from configured LLM models."""
     llm_models = get_llm_models()
-    # get a list of model names from llm_models
-    model_list = [f"{model["model_deployment"]}--{model["description"]}" for model in llm_models]
+    model_list = [f"{model['model_deployment']}--{model['description']}" for model in llm_models]
     profiles = []
-
     for item in model_list:
-        model_deployment, description = item.split("--")
-
-        # Create a profile for each model
+        model_deployment, description = item.split("--", 1)
         profiles.append(
             cl.ChatProfile(
                 name=model_deployment,
                 markdown_description=description
             )
         )
-
     return profiles
 
 
 @cl.set_starters
 async def set_starters():
-    """
-    Define starter conversation prompts for the chat interface.
-    
-    Provides pre-configured conversation starters to help users
-    begin interactions with the AI assistant.
-    
-    Returns:
-        List[cl.Starter]: List of starter conversation prompts
-    """
+    """Starter prompts."""
     return [
         cl.Starter(
-            label="What is health services quota?",
-            message="Can you help me understand the health services quota and how it affects my access to care?",
-            icon="/public/icons/piechart.png",
-            ),
-
+            label="Morning routine ideation",
+            message="Can you help me create a personalized morning routine that would help increase my productivity throughout the day? Start by asking me about my current habits and what activities energize me in the morning.",
+            icon="/public/bulb.webp",
+        ),
         cl.Starter(
-            label="Would there be no limit in terms of privileges under the plan?",
-            message="Can you explain if there are any limitations on privileges under the health services plan?",
-            icon="/public/icons/warning.webp",
-            ),
+            label="Spot the errors",
+            message="How can I avoid common mistakes when proofreading my work?",
+            icon="/public/warning.webp",
+        ),
         cl.Starter(
-            label="Who are covered by the mandatory AME?",
-            message="Can you help me understand who is covered by the mandatory AME?",
-            icon="/public/icons/bulb.webp",
-            ),
-        ]
+            label="Get more done",
+            message="How can I improve my productivity during remote work?",
+            icon="/public/rocket.png",
+        ),
+        cl.Starter(
+            label="Boost your knowledge",
+            message="Help me learn about [topic]",
+            icon="/public/book.png",
+        ),
+    ]
 
 
 @cl.on_chat_resume
 async def on_chat_resume(thread):
-    """
-    Handle chat resumption when a user returns to an existing conversation.
-    
-    Args:
-        thread: The conversation thread being resumed
-    """
+    """Handle chat resumption (noop)."""
     pass
 
 
-@cl.on_chat_start
-async def start():
-    """
-    Initialize the chat session and send a welcome message.
-    
-    Sets up chat settings, initializes Azure AI Foundry agents if needed,
-    and prepares the conversation environment for the user.
-    """
+async def _post_start_init():
+    """Shared initialization now called immediately on chat start."""
     try:
         cl.user_session.set("chat_settings", await init_settings())
         llm_details = get_llm_details()
 
-        # Create an instance of the AgentsClient using DefaultAzureCredential
+        # Initialize Foundry thread eagerly if provider is 'foundry' and not yet created
         if cl.user_session.get("chat_settings").get("model_provider") == "foundry" and not cl.user_session.get("thread_id"):
             agents_client = AgentsClient(
-                # conn_str=llm_details["api_key"],
                 endpoint=llm_details["api_endpoint"],
-                credential=DefaultAzureCredential()
+                credential=DefaultAzureCredential(),
             )
-
-            # Create a thread for the agent
             thread = agents_client.threads.create()
             cl.user_session.set("thread_id", thread.id)
             logger.info(f"New thread created, thread ID: {thread.id}")
@@ -144,30 +102,57 @@ async def start():
         logger.error(f"Error: {str(e)}")
 
 
+@cl.on_chat_start
+async def start():
+    """
+    Initialize the chat session and immediately render the FileUploader
+    (consent flow disabled).
+    """
+    Path(".files").mkdir(parents=True, exist_ok=True)
+
+    # Run init now (no consent gate)
+    await _post_start_init()
+
+    # Current user email
+    user = cl.user_session.get("user")
+    user_email = user.identifier if user else None
+    logger.info(f"user_email={user_email}")
+
+    # Should this user see the uploader?
+    show_uploader = (not ALLOWED_UPLOADER_USERS) or (user_email in ALLOWED_UPLOADER_USERS)
+    logger.info(f"User: {user_email}, Show uploader: {show_uploader}")
+
+    # Only send FileUploader if user is allowed
+    if show_uploader:
+        fupl = cl.CustomElement(
+            name="FileUploader",
+            display="inline",
+            props={"userEmail": user_email},  # Pass user email as prop
+        )
+        fupl_msg = cl.Message(content="", elements=[fupl])
+        await fupl_msg.send()
+
+
 @cl.on_message
 async def main(message: cl.Message):
     """
-    Process incoming user messages and generate responses using configured LLM providers.
-    
-    Routes messages to either Azure AI Foundry agents or standard LLM providers
-    based on the selected chat profile configuration.
-    
-    Args:
-        message: The message object from Chainlit containing user's input and attachments
+    Handle user messages and route to Foundry or the default chat completion.
     """
     try:
         cl.user_session.set("start_time", time.time())
         user_input = message.content
 
-        # Get messages from session
+        # Gather message history (and any uploaded elements)
         messages = append_message("user", user_input, message.elements)
 
-        if cl.user_session.get("chat_settings").get("model_provider") == "foundry":
+        # Route by provider
+        provider = cl.user_session.get("chat_settings", {}).get("model_provider")
+        if provider == "foundry":
             full_response = await chat_agent(user_input)
         else:
             full_response = await chat_completion(messages)
 
-        # Save the complete message to session
+        # Save assistant message to history
         append_message("assistant", full_response)
 
     except Exception as e:
