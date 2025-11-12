@@ -319,6 +319,7 @@ class TestChatAgent:
         mock_annotation = Mock()
         mock_annotation.url_citation.title = "Test Source"
         mock_annotation.url_citation.url = "https://example.com/test"
+        mock_annotation.text = None  # No annotation text to replace
         # Make the mock support the 'in' operator
         mock_annotation.__contains__ = lambda self, key: key == "url_citation"
         
@@ -335,7 +336,173 @@ class TestChatAgent:
         result = await chat_agent("Question about sources")
         
         # Verify annotations were added to response
+        assert "**Sources:**" in result
         assert "[Test Source](https://example.com/test)" in result
+
+    @patch('utils.foundry.cl.user_session')
+    @patch('utils.foundry.cl.Message')
+    @patch('utils.foundry.get_llm_models')
+    @patch('utils.foundry.AgentsClient')
+    @patch('utils.foundry.DefaultAzureCredential')
+    async def test_chat_agent_with_file_path_annotations(self, mock_credential, mock_agents_client, 
+                                                         mock_get_llm_models, mock_message_class, mock_user_session):
+        """Test chat agent with file path annotations (PDF citations)."""
+        # Mock setup with uploaded file
+        mock_user_session.get.side_effect = lambda key, default=None: {
+            "chat_settings": self.mock_settings,
+            "chat_profile": "foundry/gpt-4.1",
+            "thread_id": "thread123",
+            "file_uploads": [
+                {"name": "maternity_policy.pdf", "mime": "application/pdf", "path": "/path/to/maternity_policy.pdf", "base64": None}
+            ],
+            "file_contents": [],
+            "uploaded_files": [],
+            "start_time": 1234567880
+        }.get(key, default)
+        
+        mock_message_instance = AsyncMock()
+        mock_message_instance.content = ""
+        mock_message_class.return_value = mock_message_instance
+        
+        mock_get_llm_models.return_value = [self.mock_llm_details]
+        
+        # Mock AgentsClient
+        mock_client_instance = Mock()
+        mock_agents_client.return_value = mock_client_instance
+        
+        # Mock stream events
+        from azure.ai.agents.models import MessageDeltaChunk, ThreadRun, AgentStreamEvent
+        
+        mock_delta_chunk = Mock(spec=MessageDeltaChunk)
+        mock_delta_chunk.text = "According to the document"
+        
+        mock_thread_run = Mock(spec=ThreadRun)
+        mock_thread_run.status = "completed"
+        
+        mock_stream_events = [
+            (AgentStreamEvent.THREAD_MESSAGE_DELTA, mock_delta_chunk, None),
+            (AgentStreamEvent.THREAD_RUN_COMPLETED, mock_thread_run, None)
+        ]
+        
+        mock_stream_context = MagicMock()
+        mock_stream_context.__enter__.return_value = mock_stream_events
+        mock_stream_context.__exit__.return_value = None
+        mock_client_instance.runs.stream.return_value = mock_stream_context
+        
+        # Mock file path annotation
+        mock_file_citation = Mock()
+        mock_file_citation.file_id = "file-abc123"
+        
+        mock_annotation = Mock()
+        mock_annotation.file_path = mock_file_citation
+        mock_annotation.text = None  # No annotation text to replace
+        # Make the mock support the 'in' operator for file_path
+        mock_annotation.__contains__ = lambda self, key: key == "file_path"
+        
+        # Mock get_last_message_text_by_role
+        mock_response_message = Mock()
+        mock_response_message.text.value = "According to the document"
+        mock_response_message.text.annotations = [mock_annotation]
+        mock_client_instance.messages.get_last_message_text_by_role.return_value = mock_response_message
+        
+        # Mock messages.list for image processing
+        mock_client_instance.messages.list.return_value = []
+        
+        # Mock environment variables for SharePoint
+        with patch.dict('os.environ', {
+            'SHAREPOINT_SITE_URL': 'https://test.sharepoint.com/sites/testsite',
+            'SHAREPOINT_DOCUMENT_LIBRARY': 'Shared Documents/test'
+        }):
+            # Execute function
+            result = await chat_agent("What documents are needed?")
+        
+        # Verify file path annotations were added to response with SharePoint link
+        assert "**Sources:**" in result
+        assert "maternity_policy.pdf" in result
+        # Should contain SharePoint URL
+        assert "https://test.sharepoint.com/sites/testsite" in result or "file-abc123" in result
+
+    @patch('utils.foundry.cl.user_session')
+    @patch('utils.foundry.cl.Message')
+    @patch('utils.foundry.get_llm_models')
+    @patch('utils.foundry.AgentsClient')
+    @patch('utils.foundry.DefaultAzureCredential')
+    async def test_chat_agent_with_doc_url_citations(self, mock_credential, mock_agents_client, 
+                                                      mock_get_llm_models, mock_message_class, mock_user_session):
+        """Test chat agent with doc_X URL citations (Azure's format for uploaded files)."""
+        # Mock setup
+        mock_user_session.get.side_effect = lambda key, default=None: {
+            "chat_settings": self.mock_settings,
+            "chat_profile": "foundry/gpt-4.1",
+            "thread_id": "thread123",
+            "file_uploads": [],
+            "file_contents": [],
+            "uploaded_files": [],
+            "start_time": 1234567880,
+            "file_id_mapping": {}
+        }.get(key, default)
+        
+        mock_message_instance = AsyncMock()
+        mock_message_instance.content = ""
+        mock_message_class.return_value = mock_message_instance
+        
+        mock_get_llm_models.return_value = [self.mock_llm_details]
+        
+        # Mock AgentsClient
+        mock_client_instance = Mock()
+        mock_agents_client.return_value = mock_client_instance
+        
+        # Mock stream events
+        from azure.ai.agents.models import MessageDeltaChunk, ThreadRun, AgentStreamEvent
+        
+        mock_delta_chunk = Mock(spec=MessageDeltaChunk)
+        mock_delta_chunk.text = "Based on the documents"
+        
+        mock_thread_run = Mock(spec=ThreadRun)
+        mock_thread_run.status = "completed"
+        
+        mock_stream_events = [
+            (AgentStreamEvent.THREAD_MESSAGE_DELTA, mock_delta_chunk, None),
+            (AgentStreamEvent.THREAD_RUN_COMPLETED, mock_thread_run, None)
+        ]
+        
+        mock_stream_context = MagicMock()
+        mock_stream_context.__enter__.return_value = mock_stream_events
+        mock_stream_context.__exit__.return_value = None
+        mock_client_instance.runs.stream.return_value = mock_stream_context
+        
+        # Mock annotations with doc_X URLs (Azure's actual format)
+        mock_annotation = Mock()
+        mock_annotation.url_citation.title = "Availment Procedures.pdf"
+        mock_annotation.url_citation.url = "doc_0"  # Azure's format for uploaded files
+        mock_annotation.text = "【9:0†source】"
+        mock_annotation.__contains__ = lambda self, key: key == "url_citation"
+        
+        # Mock get_last_message_text_by_role
+        mock_response_message = Mock()
+        mock_response_message.text.value = "Based on the documents【9:0†source】"
+        mock_response_message.text.annotations = [mock_annotation]
+        mock_client_instance.messages.get_last_message_text_by_role.return_value = mock_response_message
+        
+        # Mock messages.list for image processing
+        mock_client_instance.messages.list.return_value = []
+        
+        # Mock environment variables for SharePoint
+        with patch.dict('os.environ', {
+            'SHAREPOINT_SITE_URL': 'https://company.sharepoint.com/sites/hr',
+            'SHAREPOINT_DOCUMENT_LIBRARY': 'Shared Documents/Policies'
+        }):
+            # Execute function
+            result = await chat_agent("What are the procedures?")
+        
+        # Verify the annotation marker was removed
+        assert "【9:0†source】" not in result
+        
+        # Verify file citations with SharePoint link
+        assert "**Sources:**" in result
+        assert "Availment Procedures.pdf" in result
+        assert "https://company.sharepoint.com/sites/hr" in result
+        assert "Shared%20Documents" in result or "Shared Documents" in result
 
     @patch('utils.foundry.cl.user_session')
     @patch('utils.foundry.cl.Message')
