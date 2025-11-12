@@ -48,31 +48,31 @@ async def chat_profile():
     return profiles
 
 
-@cl.set_starters
-async def set_starters():
-    """Starter prompts."""
-    return [
-        cl.Starter(
-            label="Morning routine ideation",
-            message="Can you help me create a personalized morning routine that would help increase my productivity throughout the day? Start by asking me about my current habits and what activities energize me in the morning.",
-            icon="/public/bulb.webp",
-        ),
-        cl.Starter(
-            label="Spot the errors",
-            message="How can I avoid common mistakes when proofreading my work?",
-            icon="/public/warning.webp",
-        ),
-        cl.Starter(
-            label="Get more done",
-            message="How can I improve my productivity during remote work?",
-            icon="/public/rocket.png",
-        ),
-        cl.Starter(
-            label="Boost your knowledge",
-            message="Help me learn about [topic]",
-            icon="/public/book.png",
-        ),
-    ]
+# @cl.set_starters
+# async def set_starters():
+#     """Starter prompts."""
+#     return [
+#         cl.Starter(
+#             label="Morning routine ideation",
+#             message="Can you help me create a personalized morning routine that would help increase my productivity throughout the day? Start by asking me about my current habits and what activities energize me in the morning.",
+#             icon="/public/bulb.webp",
+#         ),
+#         cl.Starter(
+#             label="Spot the errors",
+#             message="How can I avoid common mistakes when proofreading my work?",
+#             icon="/public/warning.webp",
+#         ),
+#         cl.Starter(
+#             label="Get more done",
+#             message="How can I improve my productivity during remote work?",
+#             icon="/public/rocket.png",
+#         ),
+#         cl.Starter(
+#             label="Boost your knowledge",
+#             message="Help me learn about [topic]",
+#             icon="/public/book.png",
+#         ),
+#     ]
 
 
 @cl.on_chat_resume
